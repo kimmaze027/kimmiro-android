@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "kimmiro-android",
+      "name": "settlement",
       "dependencies": {
         "@capacitor/android": "^8.4.1",
         "@capacitor/cli": "^8.4.1",

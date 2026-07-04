@@ -13,8 +13,8 @@ Android app for tracking group settlements (정산): split expenses, see who owe
 The APK is distributed via GitHub Releases (not committed to the repo).
 
 - Latest build (always points to the newest release):
-  https://github.com/kimmaze027/kimmiro-android/releases/latest/download/kimmiro-android.apk
-- All releases: https://github.com/kimmaze027/kimmiro-android/releases
+  https://github.com/kimmaze027/Settlement/releases/latest/download/settlement.apk
+- All releases: https://github.com/kimmaze027/Settlement/releases
 
 The APK is debug-signed. Enable "Install unknown apps" for your browser, then open the downloaded file. Requires Android API 24+.
 
@@ -23,8 +23,9 @@ The APK is debug-signed. Enable "Install unknown apps" for your browser, then op
 # 1. build the APK
 cd android && JAVA_HOME=<JDK21_PATH> ./gradlew assembleDebug
 # 2. upload as a new versioned release (bump the tag)
-gh release create v1.x.0 android/app/build/outputs/apk/debug/app-debug.apk \
-  --repo kimmaze027/kimmiro-android \
+cp android/app/build/outputs/apk/debug/app-debug.apk settlement.apk
+gh release create v1.x.0 settlement.apk \
+  --repo kimmaze027/Settlement \
   --title "v1.x.0" --notes "..."
 ```
 The "latest" download URL above automatically resolves to the newest tag, so existing links never break.

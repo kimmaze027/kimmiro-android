@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Settlement</title>
+<style>
+/* ===== Design tokens ===== */
+:root{
+  --bg:#0C0C0C;
+  --surface:#141414;
+  --surface-2:#1a1a1a;
+  --line:rgba(255,255,255,.08);
+  --line-strong:rgba(255,255,255,.16);
+  --txt:#fff;
+  --txt-mute:rgba(255,255,255,.72);
+  --txt-faint:rgba(255,255,255,.5);
+  --accent:#10b981;
+  --accent-2:#34d399;
+  --danger:#f87171;
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px;
+  --r-sm:8px; --r-md:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.6;-webkit-tap-highlight-color:transparent}
+input,button,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+a{color:var(--accent-2);text-decoration:none}
+.hidden{display:none!important}
+
+/* ===== App shell ===== */
+#app{max-width:500px;margin:0 auto;min-height:100vh;padding-top:env(safe-area-inset-top)}
+.screen-center{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:var(--s-6) var(--s-4)}
+.page-pad{padding:0 var(--s-4)}
+.nav-clear{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.center{text-align:center}
+
+/* ===== Typography ===== */
+.h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.3}
+.h2{font-size:16px;font-weight:600;color:var(--txt-mute);line-height:1.3}
+.brand{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.sub{color:var(--txt-faint);font-size:12px}
+.field-label{font-size:12px;color:var(--txt-faint);font-weight:500}
+.fmt{color:var(--txt-faint);font-size:11px}
+.pos{color:var(--accent-2)}
+.neg{color:var(--danger)}
+.amt{font-size:18px;font-weight:600}
+.name-val{font-size:16px;font-weight:500}
+.stl-title{font-size:15px;font-weight:500}
+
+/* ===== Layout helpers ===== */
+.row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2)}
+.col,.stack{display:flex;flex-direction:column;gap:var(--s-3)}
+.stack-sm{display:flex;flex-direction:column;gap:var(--s-2)}
+.actions{display:flex;align-items:center;gap:var(--s-2)}
+.actions-end{display:flex;align-items:center;gap:var(--s-2);justify-content:flex-end}
+.seg{display:flex;gap:var(--s-2);flex-wrap:wrap}
+.form-row{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap}
+.head-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);padding:var(--s-4) var(--s-4) var(--s-2)}
+.back-row{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-4) 0 var(--s-2)}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);margin-bottom:var(--s-3)}
+.clickable{cursor:pointer}
+.self-start{align-self:flex-start}
+.mt1{margin-top:var(--s-1)} .mt2{margin-top:var(--s-2)} .mt3{margin-top:var(--s-3)} .mt4{margin-top:var(--s-4)} .mt5{margin-top:var(--s-5)}
+.sep{border-top:1px solid var(--line);margin:var(--s-3) 0}
+
+/* ===== Cards ===== */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s-4);margin-bottom:var(--s-3)}
+.card:last-child{margin-bottom:0}
+.details{margin-top:var(--s-3);padding-top:var(--s-3);border-top:1px solid var(--line)}
+
+/* ===== Inputs ===== */
+.input{width:100%;padding:11px 13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--txt);outline:none;transition:border-color .15s}
+.input::placeholder{color:rgba(255,255,255,.32)}
+.input:focus{border-color:var(--accent)}
+.field{margin-bottom:var(--s-3)}
+
+/* ===== Buttons ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border:1px solid var(--line-strong);background:transparent;color:var(--txt);border-radius:var(--r-md);font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,opacity .15s}
+.btn:hover{background:rgba(255,255,255,.06)}
+.btn:active{transform:translateY(.5px)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#0C0C0C;font-weight:600}
+.btn-primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+.btn-sm{padding:7px 13px;font-size:12px;border-radius:var(--r-sm)}
+.btn-block{display:flex;width:100%}
+.btn.neg{color:var(--danger)}
+
+/* ===== Badge ===== */
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(255,255,255,.1);color:var(--txt-mute)}
+
+/* ===== Messages ===== */
+.err{color:var(--danger);font-size:12px;padding:var(--s-1) 0}
+.ok{color:var(--accent-2);font-size:12px;padding:var(--s-1) 0}
+
+/* ===== Checkboxes ===== */
+label.cb{display:flex;align-items:center;gap:var(--s-2);cursor:pointer;padding:7px 0}
+label.cb input{width:20px;height:20px;accent-color:var(--accent)}
+
+/* ===== Bottom nav ===== */
+.nav{position:fixed;bottom:0;left:0;right:0;max-width:500px;margin:0 auto;background:rgba(12,12,12,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav button{flex:1;background:none;border:none;color:var(--txt-faint);padding:14px 0;font-size:12px;font-weight:500;cursor:pointer}
+.nav button.active{color:var(--accent-2);font-weight:600}
+.nav button:active{opacity:.7}
+
+/* ===== Push toast ===== */
+.push-toast{position:fixed;top:0;left:0;right:0;max-width:500px;margin:0 auto;background:var(--accent);color:#0C0C0C;padding:12px 16px;font-size:13px;font-weight:600;z-index:999;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen-center">
+  <h1 class="brand center">Settlement</h1>
+  <div id="login-err" class="mt2"></div>
+  <input id="li-user" class="input field" placeholder="아이디">
+  <input id="li-pass" class="input field" type="password" placeholder="비밀번호">
+  <button id="li-btn" class="btn btn-primary btn-block">로그인</button>
+  <button id="google-btn" class="btn btn-block mt3" onclick="googleLogin()">Google 로그인</button>
+  <div id="google-err" class="err center mt2"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="screen-main" class="hidden nav-clear">
+  <!-- GROUPS -->
+  <div id="view-groups">
+    <div class="head-bar">
+      <h1 class="h1">그룹</h1>
+      <button class="btn btn-sm" onclick="toggleCreate()">+ 그룹 만들기</button>
+    </div>
+    <div id="create-form" class="card hidden stack-sm">
+      <input id="gp-name" class="input" placeholder="그룹 이름">
+      <button class="btn btn-primary btn-sm self-start" onclick="createGroup()">생성</button>
+    </div>
+    <div id="group-list" class="page-pad"></div>
+  </div>
+
+  <!-- GROUP DETAIL -->
+  <div id="view-detail" class="hidden page-pad">
+    <div class="back-row">
+      <button class="btn btn-sm" onclick="showGroups()">← 뒤로</button>
+    </div>
+    <h1 class="h1" id="detail-name"></h1>
+    <div class="sub" id="detail-members"></div>
+    <div class="sep"></div>
+    <!-- SETTLEMENT -->
+    <div class="section-head">
+      <h2 class="h2">정산</h2>
+      <button class="btn btn-sm" onclick="toggleSettlementForm()">+ 정산 요청</button>
+    </div>
+    <!-- balance -->
+    <div class="card">
+      <div class="row clickable" onclick="toggleDetails()">
+        <div class="stack-sm"><span class="sub">받을 금액 ▾</span><span class="amt pos" id="bal-to"></span></div>
+        <div class="stack-sm"><span class="sub">보낼 금액 ▾</span><span class="amt neg" id="bal-by"></span></div>
+        <div class="stack-sm"><span class="sub">합계</span><span class="badge" id="bal-net"></span></div>
+      </div>
+      <div id="bal-details" class="hidden stack details"></div>
+    </div>
+    <!-- create form -->
+    <div id="stl-form" class="card hidden stack">
+      <input id="stl-total" class="input" placeholder="전체 금액 (원)" oninput="fmtTotal()">
+      <input id="stl-merchant" class="input" placeholder="사용처">
+      <input id="stl-reason" class="input" placeholder="사유">
+      <div class="form-row"><span class="field-label">대상</span>
+        <div class="seg">
+          <button class="btn btn-sm" id="mode-all" onclick="setMode('all')">전체</button>
+          <button class="btn btn-sm" id="mode-sel" onclick="setMode('selected')">선택</button>
+        </div>
+      </div>
+      <div class="form-row"><span class="field-label">분할</span>
+        <div class="seg">
+          <button class="btn btn-sm" id="split-eq" onclick="setSplit('equal')">균등</button>
+          <button class="btn btn-sm" id="split-cu" onclick="setSplit('custom')">개별</button>
+        </div>
+      </div>
+      <div id="member-list"></div>
+      <div id="stl-err" class="err"></div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="submitSettlement()">요청</button>
+        <button class="btn btn-sm" onclick="toggleSettlementForm()">취소</button>
+      </div>
+    </div>
+    <!-- list -->
+    <div id="stl-list" class="mt3"></div>
+  </div>
+
+  <!-- MYPAGE -->
+  <div id="view-mypage" class="page-pad">
+    <h1 class="h1 mt4">내 정보</h1>
+    <div class="card stack">
+      <div class="row">
+        <div class="stack-sm"><span class="sub">닉네임</span><span class="name-val" id="my-name"></span></div>
+        <button class="btn btn-sm" onclick="toggleNameEdit()">변경</button>
+      </div>
+      <div id="name-edit" class="hidden stack">
+        <input id="new-name" class="input" placeholder="새 닉네임 (3~20자)">
+        <div class="actions">
+          <button class="btn btn-primary btn-sm" onclick="saveName()">저장</button>
+          <button class="btn btn-sm" onclick="toggleNameEdit()">취소</button>
+        </div>
+        <div id="name-msg"></div>
+      </div>
+    </div>
+    <button class="btn btn-block mt4" onclick="logout()">로그아웃</button>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="nav">
+    <button id="tab-groups" class="active" onclick="showView('groups')">그룹</button>
+    <button id="tab-mypage" onclick="showView('mypage')">내 정보</button>
+  </div>
+</div>
+</div>
+
+<script>
+const API = "https://api.kimmiro.com";
+let myId = null, currentGid = null, groupMembers = [], stlMode = "all", stlSplit = "equal", editingSid = null;
+
+// --- API helpers ---
+async function api(path, opts = {}) {
+  const r = await fetch(`${API}${path}`, { ...opts, credentials: "include" });
+  if (!r.ok && r.status !== 201) throw { status: r.status, ...(await r.json().catch(() => ({}))) };
+  return r;
+}
+const won = n => "₩" + (n || 0).toLocaleString();
+const esc = s => (s || "").replace(/</g, "&lt;");
+
+// --- LOGIN ---
+document.getElementById("li-btn").onclick = async () => {
+  const u = document.getElementById("li-user").value.trim();
+  const p = document.getElementById("li-pass").value;
+  const e = document.getElementById("login-err");
+  e.innerHTML = "";
+  if (!u || !p) { e.innerHTML = '<p class="err">아이디/비밀번호 입력</p>'; return; }
+  try {
+    await api("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p }) });
+    await init();
+  } catch { e.innerHTML = '<p class="err">로그인 실패</p>'; }
+};
+// --- GOOGLE NATIVE LOGIN ---
+async function googleLogin() {
+  const err = document.getElementById("google-err");
+  err.textContent = "";
+  try {
+    const { GoogleAuth } = Capacitor.Plugins;
+    await GoogleAuth.initialize();
+    const result = await GoogleAuth.signIn();
+    const idToken = result.authentication?.idToken;
+    if (!idToken) throw { code: 0, message: "no id_token" };
+    const res = await fetch(`${API}/api/auth/google/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: idToken }),
+      credentials: "include",
+    });
+    if (!res.ok) throw { code: -1, message: "server rejected token (" + res.status + ")" };
+    await init();
+  } catch (e) {
+    const code = Number(e.code ?? e.status ?? -99);
+    const msgs = {
+      4: "구글 계정 선택 필요",
+      5: "로그인 취소됨",
+      7: "네트워크 오류",
+      8: "Google Play Services 오류",
+      10: "설정 오류 (DEVELOPER_ERROR) — Google Cloud Console에 SHA-1 지문 + 패키지명(com.kimmiro.app) 등록 필요",
+      12500: "Google Play Services 버전 확인 필요",
+      12501: "로그인 취소",
+    };
+    err.textContent = msgs[code] || ("구글 로그인 실패 [code=" + code + "]: " + (e.message || ""));
+  }
+}
+
+// --- INIT ---
+async function init() {
+  try {
+    const r = await api("/api/auth/me");
+    const d = await r.json();
+    if (d.username_customized === false) {
+      // force nickname setup first
+      const nn = prompt("닉네임을 설정하세요 (3~20자 영문/숫자/_/-)");
+      if (nn) {
+        await api("/api/me/username", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: nn.trim() }) });
+      }
+    }
+    myId = d.id;
+    document.getElementById("my-name").textContent = d.username;
+    document.getElementById("screen-login").classList.add("hidden");
+    document.getElementById("screen-main").classList.remove("hidden");
+    await loadGroups();
+    registerPush();
+  } catch { /* not logged in */ }
+}
+// --- PUSH NOTIFICATIONS ---
+async function registerPush() {
+  try {
+    const { PushNotifications } = Capacitor.Plugins;
+    let perm = await PushNotifications.checkPermissions();
+    if (perm.receive === "prompt") perm = await PushNotifications.requestPermissions();
+    if (perm.receive !== "granted") return;
+    await PushNotifications.register();
+    PushNotifications.addListener("registration", async (token) => {
+      try {
+        await fetch(`${API}/api/me/device-token`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: token.value, platform: "android" }),
+          credentials: "include",
+        });
+      } catch {}
+    });
+    PushNotifications.addListener("pushNotificationReceived", (notification) => {
+      // Show an in-app toast when a push arrives while the app is open.
+      if (notification.title) {
+        const t = document.createElement("div");
+        t.className = "push-toast";
+        t.textContent = notification.title + (notification.body ? ": " + notification.body : "");
+        t.onclick = () => { t.remove(); if (currentGid) loadSettlements(); };
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 5000);
+      }
+    });
+  } catch {}
+}
+
+// --- GROUPS ---
+async function loadGroups() {
+  try {
+    const r = await api("/api/groups");
+    const d = await r.json();
+    const el = document.getElementById("group-list");
+    if (!d.groups || !d.groups.length) { el.innerHTML = '<p class="sub" style="padding:12px">그룹이 없습니다.</p>'; return; }
+    el.innerHTML = d.groups.map(g => `<div class="card clickable" onclick="openGroup(${g.id})"><div class="row"><span class="stl-title">${esc(g.name)}</span><span class="badge">${g.owner_id === myId ? "운영자" : "멤버"}</span></div></div>`).join("");
+  } catch {}
+}
+function toggleCreate() { document.getElementById("create-form").classList.toggle("hidden"); }
+async function createGroup() {
+  const n = document.getElementById("gp-name").value.trim();
+  if (!n) return;
+  try { await api("/api/groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: n }) }); document.getElementById("gp-name").value = ""; toggleCreate(); await loadGroups(); } catch {}
+}
+
+// --- GROUP DETAIL ---
+async function openGroup(gid) {
+  currentGid = gid;
+  showView("detail");
+  try {
+    const r = await api(`/api/groups/${gid}`);
+    const d = await r.json();
+    document.getElementById("detail-name").textContent = d.name;
+    groupMembers = d.members || [];
+    document.getElementById("detail-members").textContent = `멤버 ${groupMembers.length}명`;
+    await loadSettlements();
+    renderMemberList();
+  } catch {}
+}
+function showGroups() { showView("groups"); currentGid = null; }
+
+// --- SETTLEMENTS ---
+async function loadSettlements() {
+  if (!currentGid) return;
+  try {
+    const [br, lr] = await Promise.all([
+      api(`/api/groups/${currentGid}/settlements/balance`),
+      api(`/api/groups/${currentGid}/settlements`),
+    ]);
+    const b = await br.json(), l = await lr.json();
+    document.getElementById("bal-to").textContent = won(b.owed_to_me);
+    document.getElementById("bal-by").textContent = won(b.owed_by_me);
+    const net = b.net || 0;
+    document.getElementById("bal-net").textContent = (net >= 0 ? "+" : "") + won(net);
+    // details
+    const det = document.getElementById("bal-details");
+    let h = "";
+    if (b.breakdown?.owed_to_me?.length) { h += '<span class="sub">내가 받을 돈</span>'; b.breakdown.owed_to_me.forEach(d => h += `<div class="row"><span class="sub">${esc(d.username)}에게서</span><span class="pos">${won(d.amount)}</span></div>`); }
+    if (b.breakdown?.owed_by_me?.length) { h += '<span class="sub">내가 보낼 돈</span>'; b.breakdown.owed_by_me.forEach(d => h += `<div class="row"><span class="sub">${esc(d.username)}에게</span><span class="neg">${won(d.amount)}</span></div>`); }
+    det.innerHTML = h;
+    // list
+    const ll = document.getElementById("stl-list");
+    if (!l.settlements?.length) { ll.innerHTML = '<p class="sub" style="padding:8px 0">정산 요청이 없습니다.</p>'; return; }
+    ll.innerHTML = l.settlements.map(s => {
+      const mine = s.requester_user_id === myId;
+      return `<div class="card stack">
+        <div class="row"><span class="stl-title">${esc(s.merchant)}</span><span class="badge">${s.target_mode === "all" ? "전체" : "선택"}</span>${s.has_receipt ? '<span class="badge">영수증</span>' : ""}</div>
+        <span class="amt">${won(s.total_amount)}</span>
+        <span class="sub">${esc(s.reason)} · ${esc(s.requester_username)}${s.my_share > 0 ? ' · <span class="neg">내 몫 ' + won(s.my_share) + "</span>" : ""}</span>
+        ${mine ? `<div class="actions mt1"><button class="btn btn-sm" onclick="editSettlement(${s.id},'${esc(s.merchant)}',${s.total_amount},'${esc(s.reason)}','${s.target_mode}')">수정</button><button class="btn btn-sm neg" onclick="delSettlement(${s.id})">삭제</button></div>` : ""}
+      </div>`;
+    }).join("");
+  } catch {}
+}
+function toggleDetails() { document.getElementById("bal-details").classList.toggle("hidden"); }
+function toggleSettlementForm() {
+  const f = document.getElementById("stl-form");
+  f.classList.toggle("hidden");
+  if (!f.classList.contains("hidden")) { editingSid = null; ["stl-total","stl-merchant","stl-reason"].forEach(i => document.getElementById(i).value = ""); document.getElementById("stl-err").innerHTML = ""; setMode("all"); }
+}
+function fmtTotal() {
+  const el = document.getElementById("stl-total");
+  const raw = el.value.replace(/[^\d]/g, "");
+  el.value = raw ? Number(raw).toLocaleString() : "";
+}
+function setMode(m) {
+  stlMode = m;
+  document.getElementById("mode-all").className = "btn btn-sm" + (m === "all" ? " btn-primary" : "");
+  document.getElementById("mode-sel").className = "btn btn-sm" + (m === "selected" ? " btn-primary" : "");
+  renderMemberList();
+}
+function setSplit(s) {
+  stlSplit = s;
+  document.getElementById("split-eq").className = "btn btn-sm" + (s === "equal" ? " btn-primary" : "");
+  document.getElementById("split-cu").className = "btn btn-sm" + (s === "custom" ? " btn-primary" : "");
+  renderMemberList();
+}
+function renderMemberList() {
+  const el = document.getElementById("member-list");
+  if (stlMode !== "selected") { el.innerHTML = ""; return; }
+  const total = parseInt(document.getElementById("stl-total").value.replace(/[^\d]/g, "")) || 0;
+  const checked = Array.from(el.querySelectorAll("input:checked")).map(c => parseInt(c.value));
+  el.innerHTML = groupMembers.map(m => {
+    const isC = stlMode === "selected" ? checked.includes(m.user_id) : true;
+    let amt = "";
+    if (stlSplit === "equal" && isC && checked.length) amt = `<span class="fmt">${won(Math.floor(total / checked.length))}</span>`;
+    return `<label class="cb"><input type="checkbox" value="${m.user_id}" ${isC ? "checked" : ""} onchange="renderMemberList()">${esc(m.username)} ${amt}</label>`;
+  }).join("");
+}
+async function submitSettlement() {
+  const e = document.getElementById("stl-err"); e.innerHTML = "";
+  const total = parseInt(document.getElementById("stl-total").value.replace(/[^\d]/g, "")) || 0;
+  const merchant = document.getElementById("stl-merchant").value.trim();
+  const reason = document.getElementById("stl-reason").value.trim();
+  if (!total || !merchant) { e.innerHTML = "금액/사용처를 입력하세요"; return; }
+  const body = { total_amount: total, merchant, reason, target_mode: stlMode };
+  if (stlMode === "selected") {
+    const checked = Array.from(document.querySelectorAll("#member-list input:checked")).map(c => parseInt(c.value));
+    if (!checked.length) { e.innerHTML = "대상을 선택하세요"; return; }
+    if (stlSplit === "equal") {
+      const base = Math.floor(total / checked.length), rem = total - base * checked.length;
+      body.splits = checked.map((uid, i) => ({ user_id: uid, amount: base + (i < rem ? 1 : 0) }));
+    } else {
+      const inputs = document.querySelectorAll("#member-list input:checked");
+      body.splits = []; let sum = 0;
+      inputs.forEach(inp => {
+        const uid = parseInt(inp.value);
+        const am = parseInt(prompt(`${inp.parentElement.textContent.trim().split(/\s/)[0]}의 금액:`) || "0") || 0;
+        body.splits.push({ user_id: uid, amount: am }); sum += am;
+      });
+      if (sum !== total) { e.innerHTML = `합계 ${won(sum)} ≠ ${won(total)}`; return; }
+    }
+  }
+  try {
+    const m = editingSid ? "PUT" : "POST";
+    const p = editingSid ? `/api/groups/${currentGid}/settlements/${editingSid}` : `/api/groups/${currentGid}/settlements`;
+    await api(p, { method: m, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    toggleSettlementForm(); await loadSettlements();
+  } catch (err) { e.innerHTML = err.error || "실패"; }
+}
+function editSettlement(sid, merchant, total, reason, mode) {
+  editingSid = sid;
+  document.getElementById("stl-total").value = total.toLocaleString();
+  document.getElementById("stl-merchant").value = merchant;
+  document.getElementById("stl-reason").value = reason;
+  setMode(mode);
+  document.getElementById("stl-form").classList.remove("hidden");
+}
+async function delSettlement(sid) {
+  if (!confirm("삭제할까요?")) return;
+  try { await api(`/api/groups/${currentGid}/settlements/${sid}`, { method: "DELETE" }); await loadSettlements(); } catch {}
+}
+
+// --- MYPAGE / NICKNAME ---
+function toggleNameEdit() { document.getElementById("name-edit").classList.toggle("hidden"); document.getElementById("new-name").value = document.getElementById("my-name").textContent; document.getElementById("name-msg").innerHTML = ""; }
+async function saveName() {
+  const v = document.getElementById("new-name").value.trim();
+  const m = document.getElementById("name-msg");
+  if (v.length < 3 || v.length > 20 || !/^[A-Za-z0-9_-]+$/.test(v)) { m.innerHTML = '<p class="err">3~20자 영문/숫자/_/-</p>'; return; }
+  try {
+    await api("/api/me/username", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: v }) });
+    document.getElementById("my-name").textContent = v; toggleNameEdit(); m.innerHTML = '<p class="ok">변경됨</p>';
+  } catch (err) { m.innerHTML = `<p class="err">${err.status === 409 ? "이미 사용 중" : "실패"}</p>`; }
+}
+async function logout() { try { await api("/api/auth/logout", { method: "POST" }); } catch {} location.reload(); }
+
+// --- NAV ---
+function showView(v) {
+  ["groups","detail","mypage"].forEach(s => document.getElementById("view-" + s).classList.add("hidden"));
+  document.getElementById("view-" + (v === "mypage" ? "mypage" : v)).classList.remove("hidden");
+  document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + (v === "detail" ? "groups" : v)).classList.add("active");
+  if (v === "groups") loadGroups();
+}
+
+// --- START ---
+init();
+</script>
+</body>
+</html>

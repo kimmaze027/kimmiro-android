@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">정산</string>
-    <string name="title_activity_main">정산</string>
+    <string name="app_name">Settlement</string>
+    <string name="title_activity_main">Settlement</string>
     <string name="package_name">com.kimmiro.app</string>
     <string name="custom_url_scheme">com.kimmiro.app</string>
     <string name="server_client_id">117055947609-ddekaas8131nata3eh8a94urahuh01ja.apps.googleusercontent.com</string>
