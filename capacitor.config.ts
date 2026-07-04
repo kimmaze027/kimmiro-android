@@ -5,11 +5,7 @@ const config: CapacitorConfig = {
   appName: "김미로",
   webDir: "www",
   server: {
-    url: "https://www.kimmiro.com",
-    cleartext: false,
-  },
-  android: {
-    allowMixedContent: false,
+    androidScheme: "https",
   },
 };
 
