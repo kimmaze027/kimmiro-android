@@ -1,4 +1,4 @@
-# 정산 (Settlement) — Android App
+# Settlement — Android App
 
 Android app for tracking group settlements (정산): split expenses, see who owes what, and settle up within groups.
 

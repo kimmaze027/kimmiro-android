@@ -26,13 +26,13 @@
 
 ## App Identity
 
-- App display name: **정산** (shown under the launcher icon). Set in BOTH `capacitor.config.ts` (`appName`) and `android/app/src/main/res/values/strings.xml` (`app_name`, `title_activity_main`) — they must match, or the next `npx cap sync android` will overwrite `strings.xml`.
+- App display name: **Settlement** (shown under the launcher icon). Set in BOTH `capacitor.config.ts` (`appName`) and `android/app/src/main/res/values/strings.xml` (`app_name`, `title_activity_main`) — they must match, or the next `npx cap sync android` will overwrite `strings.xml`.
 
 ## Project Basics
 
 | Item | Value |
 |------|-------|
 | Repo | `kimmaze027/Settlement` (public) |
-| App | 정산 (Settlement) |
+| App | Settlement |
 | Stack | Capacitor 8 (Android WebView wrapper) |
 | Backend | loads `https://www.kimmiro.com` |
