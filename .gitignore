@@ -12,6 +12,7 @@ android/captures/
 android/app/release/
 *.keystore
 !debug.keystore
+*.apk
 
 # IDE
 .idea/
