@@ -492,7 +492,15 @@ async function saveName() {
     document.getElementById("my-name").textContent = v; toggleNameEdit(); m.innerHTML = '<p class="ok">변경됨</p>';
   } catch (err) { m.innerHTML = `<p class="err">${err.status === 409 ? "이미 사용 중" : "실패"}</p>`; }
 }
-async function logout() { try { await api("/api/auth/logout", { method: "POST" }); } catch {} location.reload(); }
+async function logout() {
+  try {
+    // Sign out of the native Google client too, so the account picker shows
+    // again on the next login instead of silently re-using the last account.
+    try { await Capacitor.Plugins.GoogleAuth.signOut(); } catch {}
+    await api("/api/auth/logout", { method: "POST" });
+  } catch {}
+  location.reload();
+}
 
 // --- NAV ---
 function showView(v) {
