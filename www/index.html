@@ -333,38 +333,7 @@ async function init() {
     document.getElementById("screen-login").classList.add("hidden");
     document.getElementById("screen-main").classList.remove("hidden");
     await loadGroups();
-    registerPush();
   } catch { /* not logged in */ }
-}
-// --- PUSH NOTIFICATIONS ---
-async function registerPush() {
-  try {
-    const { PushNotifications } = Capacitor.Plugins;
-    let perm = await PushNotifications.checkPermissions();
-    if (perm.receive === "prompt") perm = await PushNotifications.requestPermissions();
-    if (perm.receive !== "granted") return;
-    await PushNotifications.register();
-    PushNotifications.addListener("registration", async (token) => {
-      try {
-        await fetch(`${API}/api/me/device-token`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: token.value, platform: "android" }),
-          credentials: "include",
-        });
-      } catch {}
-    });
-    PushNotifications.addListener("pushNotificationReceived", (notification) => {
-      // Show an in-app toast when a push arrives while the app is open.
-      if (notification.title) {
-        const t = document.createElement("div");
-        t.className = "push-toast";
-        t.textContent = notification.title + (notification.body ? ": " + notification.body : "");
-        t.onclick = () => { t.remove(); if (currentGid) loadSettlements(); };
-        document.body.appendChild(t);
-        setTimeout(() => t.remove(), 5000);
-      }
-    });
-  } catch {}
 }
 
 // --- GROUPS ---
