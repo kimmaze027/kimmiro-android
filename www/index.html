@@ -239,24 +239,69 @@ document.getElementById("li-btn").onclick = async () => {
   } catch { e.innerHTML = '<p class="err">로그인 실패</p>'; }
 };
 // --- GOOGLE NATIVE LOGIN ---
+// Why this is non-trivial: GoogleAuth.signIn() opens a separate system Activity
+// (account picker). While it is foregrounded the app is backgrounded and Android
+// frequently kills the app process to reclaim memory. The JS `await signIn()`
+// promise is destroyed with the page, so the idToken never reaches the server, no
+// session cookie is set, and the app relaunches to the login screen (looks like a
+// crash). To survive this we record "in-flight" in Preferences and, on the next
+// launch, silently recover the persisted native account via refresh().
+const PREF_G_INFLIGHT = "google_login_inflight";
+const pref = {
+  get: (k) => Capacitor.Plugins.Preferences.get({ key: k }).then((r) => r.value),
+  set: (k, v) => Capacitor.Plugins.Preferences.set({ key: k, value: v }),
+  del: (k) => Capacitor.Plugins.Preferences.remove({ key: k }),
+};
+
+// Exchange a Google idToken for a session cookie, then enter the app.
+async function completeGoogleLogin(idToken) {
+  const res = await fetch(`${API}/api/auth/google/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: idToken }),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("server rejected token (" + res.status + ")");
+  await init();
+}
+
+// Silent recovery for when a previous Google login was interrupted by process
+// death. The native GoogleSignInClient keeps the signed-in account, so refresh()
+// returns a fresh idToken with no UI. Returns true if the app ended up logged in.
+async function recoverGoogleLogin() {
+  if ((await pref.get(PREF_G_INFLIGHT)) !== "1") return false;
+  try {
+    const { GoogleAuth } = Capacitor.Plugins;
+    await GoogleAuth.initialize();
+    const auth = await GoogleAuth.refresh();
+    const idToken = auth?.idToken;
+    if (!idToken) throw new Error("no id_token on refresh");
+    await completeGoogleLogin(idToken);
+    await pref.del(PREF_G_INFLIGHT);
+    return true;
+  } catch {
+    // Not actually signed in / revoked / network — clear the flag and fall through
+    // to normal init() so the user lands on the login screen, not a silent loop.
+    try { await pref.del(PREF_G_INFLIGHT); } catch {}
+    return false;
+  }
+}
+
 async function googleLogin() {
   const err = document.getElementById("google-err");
   err.textContent = "";
   try {
     const { GoogleAuth } = Capacitor.Plugins;
     await GoogleAuth.initialize();
+    // Mark in-flight BEFORE leaving the app, so a mid-sign-in process kill is recoverable.
+    await pref.set(PREF_G_INFLIGHT, "1");
     const result = await GoogleAuth.signIn();
+    await pref.del(PREF_G_INFLIGHT);
     const idToken = result.authentication?.idToken;
     if (!idToken) throw { code: 0, message: "no id_token" };
-    const res = await fetch(`${API}/api/auth/google/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: idToken }),
-      credentials: "include",
-    });
-    if (!res.ok) throw { code: -1, message: "server rejected token (" + res.status + ")" };
-    await init();
+    await completeGoogleLogin(idToken);
   } catch (e) {
+    try { await pref.del(PREF_G_INFLIGHT); } catch {}
     const code = Number(e.code ?? e.status ?? -99);
     const msgs = {
       4: "구글 계정 선택 필요",
@@ -490,7 +535,12 @@ function showView(v) {
 }
 
 // --- START ---
-init();
+(async () => {
+  // If a previous Google login was interrupted by the OS killing the app while the
+  // account picker was open, finish it silently before showing the login screen.
+  const recovered = await recoverGoogleLogin();
+  if (!recovered) await init();
+})();
 </script>
 </body>
 </html>
