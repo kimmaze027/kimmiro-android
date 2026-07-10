@@ -431,11 +431,29 @@ async function loadSettlements() {
     if (!l.settlements?.length) { ll.innerHTML = '<p class="sub" style="padding:8px 0">정산 요청이 없습니다.</p>'; return; }
     ll.innerHTML = l.settlements.map(s => {
       const mine = s.requester_user_id === myId;
+      const otherSplits = (s.splits || []).filter(sp => sp.user_id !== s.requester_user_id);
+      const allPaid = mine && otherSplits.length > 0 && otherSplits.every(sp => sp.paid);
+      let splitsHtml = "";
+      if (mine && otherSplits.length > 0) {
+        splitsHtml = '<div class="mt1" style="border-top:1px solid var(--line);padding-top:8px">' +
+          '<span class="sub" style="font-weight:600">받기 현황</span>' +
+          otherSplits.map(sp => {
+            const btn = sp.paid
+              ? '<span class="badge" style="background:rgba(16,185,129,.15);color:#34d399">받음 ✓</span>'
+              : `<button class="btn btn-sm" style="border:1px solid rgba(16,185,129,.3);color:#34d399" onclick="markPaid(${s.id},${sp.user_id})">받았어요</button>`;
+            const amt = sp.paid
+              ? `<span class="sub" style="text-decoration:line-through;opacity:.4">${won(sp.amount_owed)}</span>`
+              : `<span class="pos">${won(sp.amount_owed)}</span>`;
+            return `<div class="row"><span class="sub">${esc(sp.username)}</span><span class="row" style="gap:8px">${amt}${btn}</span></div>`;
+          }).join("") +
+          '</div>';
+      }
       return `<div class="card stack">
-        <div class="row"><span class="stl-title">${esc(s.merchant)}</span><span class="badge">${s.target_mode === "all" ? "전체" : "선택"}</span>${s.has_receipt ? '<span class="badge">영수증</span>' : ""}</div>
+        <div class="row"><span class="stl-title">${esc(s.merchant)}</span><span class="badge">${s.target_mode === "all" ? "전체" : "선택"}</span>${s.has_receipt ? '<span class="badge">영수증</span>' : ""}${allPaid ? '<span class="badge" style="background:rgba(16,185,129,.15);color:#34d399">전액 수령</span>' : ""}</div>
         <span class="amt">${won(s.total_amount)}</span>
         <span class="sub">${esc(s.reason)} · ${esc(s.requester_username)}${s.my_share > 0 ? ' · <span class="neg">내 몫 ' + won(s.my_share) + "</span>" : ""}</span>
         ${mine ? `<div class="actions mt1"><button class="btn btn-sm" onclick="editSettlement(${s.id},'${esc(s.merchant)}',${s.total_amount},'${esc(s.reason)}','${s.target_mode}')">수정</button><button class="btn btn-sm neg" onclick="delSettlement(${s.id})">삭제</button></div>` : ""}
+        ${splitsHtml}
       </div>`;
     }).join("");
   } catch {}
@@ -517,6 +535,18 @@ function editSettlement(sid, merchant, total, reason, mode) {
 async function delSettlement(sid) {
   if (!confirm("삭제할까요?")) return;
   try { await api(`/api/groups/${currentGid}/settlements/${sid}`, { method: "DELETE" }); await loadSettlements(); } catch {}
+}
+async function markPaid(sid, uid) {
+  try {
+    await api(`/api/groups/${currentGid}/settlements/${sid}/pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: uid }),
+    });
+    await loadSettlements();
+  } catch (err) {
+    if (err.message) alert(err.message);
+  }
 }
 
 // --- MYPAGE / NICKNAME ---
