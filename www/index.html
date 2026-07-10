@@ -146,7 +146,21 @@ label.cb input{width:20px;height:20px;accent-color:var(--accent)}
     <!-- SETTLEMENT -->
     <div class="section-head">
       <h2 class="h2">정산</h2>
-      <button class="btn btn-sm" onclick="toggleSettlementForm()">+ 정산 요청</button>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-sm" id="btn-deposit" onclick="openDeposit()" style="display:none">입금 확인</button>
+        <button class="btn btn-sm" onclick="toggleSettlementForm()">+ 정산 요청</button>
+      </div>
+    </div>
+    <!-- deposit modal -->
+    <div id="deposit-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px" onclick="closeDeposit()">
+      <div class="card stack" style="max-width:400px;width:100%" onclick="event.stopPropagation()">
+        <div class="row" style="justify-content:space-between"><span class="stl-title">입금 확인</span><span class="sub" style="cursor:pointer" onclick="closeDeposit()">✕</span></div>
+        <div id="deposit-debtors"></div>
+        <span class="sub" id="deposit-hint" style="display:none"></span>
+        <input id="deposit-amount" class="input" placeholder="받은 금액 (원)" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,',')">
+        <div id="deposit-err" class="err"></div>
+        <div class="actions"><button class="btn btn-primary" id="deposit-submit" onclick="submitDeposit()">확인</button><button class="btn" onclick="closeDeposit()">취소</button></div>
+      </div>
     </div>
     <!-- balance -->
     <div class="card">
@@ -420,6 +434,8 @@ async function loadSettlements() {
     document.getElementById("bal-by").textContent = won(b.owed_by_me);
     const net = b.net || 0;
     document.getElementById("bal-net").textContent = (net >= 0 ? "+" : "") + won(net);
+    // show/hide deposit button
+    document.getElementById("btn-deposit").style.display = b.owed_to_me > 0 ? "" : "none";
     // details
     const det = document.getElementById("bal-details");
     let h = "";
@@ -431,29 +447,11 @@ async function loadSettlements() {
     if (!l.settlements?.length) { ll.innerHTML = '<p class="sub" style="padding:8px 0">정산 요청이 없습니다.</p>'; return; }
     ll.innerHTML = l.settlements.map(s => {
       const mine = s.requester_user_id === myId;
-      const otherSplits = (s.splits || []).filter(sp => sp.user_id !== s.requester_user_id);
-      const allPaid = mine && otherSplits.length > 0 && otherSplits.every(sp => sp.paid);
-      let splitsHtml = "";
-      if (mine && otherSplits.length > 0) {
-        splitsHtml = '<div class="mt1" style="border-top:1px solid var(--line);padding-top:8px">' +
-          '<span class="sub" style="font-weight:600">받기 현황</span>' +
-          otherSplits.map(sp => {
-            const btn = sp.paid
-              ? '<span class="badge" style="background:rgba(16,185,129,.15);color:#34d399">받음 ✓</span>'
-              : `<button class="btn btn-sm" style="border:1px solid rgba(16,185,129,.3);color:#34d399" onclick="markPaid(${s.id},${sp.user_id})">받았어요</button>`;
-            const amt = sp.paid
-              ? `<span class="sub" style="text-decoration:line-through;opacity:.4">${won(sp.amount_owed)}</span>`
-              : `<span class="pos">${won(sp.amount_owed)}</span>`;
-            return `<div class="row"><span class="sub">${esc(sp.username)}</span><span class="row" style="gap:8px">${amt}${btn}</span></div>`;
-          }).join("") +
-          '</div>';
-      }
       return `<div class="card stack">
-        <div class="row"><span class="stl-title">${esc(s.merchant)}</span><span class="badge">${s.target_mode === "all" ? "전체" : "선택"}</span>${s.has_receipt ? '<span class="badge">영수증</span>' : ""}${allPaid ? '<span class="badge" style="background:rgba(16,185,129,.15);color:#34d399">전액 수령</span>' : ""}</div>
+        <div class="row"><span class="stl-title">${esc(s.merchant)}</span><span class="badge">${s.target_mode === "all" ? "전체" : "선택"}</span>${s.has_receipt ? '<span class="badge">영수증</span>' : ""}</div>
         <span class="amt">${won(s.total_amount)}</span>
         <span class="sub">${esc(s.reason)} · ${esc(s.requester_username)}${s.my_share > 0 ? ' · <span class="neg">내 몫 ' + won(s.my_share) + "</span>" : ""}</span>
         ${mine ? `<div class="actions mt1"><button class="btn btn-sm" onclick="editSettlement(${s.id},'${esc(s.merchant)}',${s.total_amount},'${esc(s.reason)}','${s.target_mode}')">수정</button><button class="btn btn-sm neg" onclick="delSettlement(${s.id})">삭제</button></div>` : ""}
-        ${splitsHtml}
       </div>`;
     }).join("");
   } catch {}
@@ -536,17 +534,47 @@ async function delSettlement(sid) {
   if (!confirm("삭제할까요?")) return;
   try { await api(`/api/groups/${currentGid}/settlements/${sid}`, { method: "DELETE" }); await loadSettlements(); } catch {}
 }
-async function markPaid(sid, uid) {
+let depositSelectedUid = null;
+async function openDeposit() {
+  const res = await api(`/api/groups/${currentGid}/settlements/balance`);
+  const b = await res.json();
+  const debtors = b.breakdown?.owed_to_me || [];
+  if (!debtors.length) { alert("받을 금액이 없습니다."); return; }
+  depositSelectedUid = debtors[0].user_id;
+  const dd = document.getElementById("deposit-debtors");
+  dd.innerHTML = '<span class="sub">받은 사람</span>' +
+    debtors.map(d => `<button class="btn btn-sm deposit-pick" data-uid="${d.user_id}" onclick="pickDebtor(${d.user_id})" style="margin:4px 4px 4px 0">${esc(d.username)} (${won(d.amount)})</button>`).join("");
+  pickDebtor(depositSelectedUid);
+  document.getElementById("deposit-amount").value = "";
+  document.getElementById("deposit-err").innerHTML = "";
+  document.getElementById("deposit-modal").classList.remove("hidden");
+}
+function pickDebtor(uid) {
+  depositSelectedUid = uid;
+  document.querySelectorAll(".deposit-pick").forEach(b => {
+    const on = parseInt(b.dataset.uid) === uid;
+    b.style.cssText = on
+      ? "margin:4px 4px 4px 0;border:1px solid rgba(16,185,129,.4);color:#34d399;background:rgba(16,185,129,.15)"
+      : "margin:4px 4px 4px 0;border:1px solid var(--line);color:var(--txt-mute)";
+  });
+  const hint = document.getElementById("deposit-hint");
+  const res = document.querySelector(`.deposit-pick[data-uid="${uid}"]`);
+  if (res) { hint.textContent = res.textContent.replace(/.*\((.*)\)/, "받을 금액: $1"); hint.style.display = ""; }
+}
+function closeDeposit() { document.getElementById("deposit-modal").classList.add("hidden"); }
+async function submitDeposit() {
+  const e = document.getElementById("deposit-err"); e.innerHTML = "";
+  const amt = parseInt(document.getElementById("deposit-amount").value.replace(/[^\d]/g, "")) || 0;
+  if (!depositSelectedUid || amt <= 0) { e.innerHTML = "멤버와 금액을 입력하세요"; return; }
   try {
-    await api(`/api/groups/${currentGid}/settlements/${sid}/pay`, {
+    const res = await api(`/api/groups/${currentGid}/settlements/payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: uid }),
+      body: JSON.stringify({ from_user_id: depositSelectedUid, amount: amt }),
     });
-    await loadSettlements();
-  } catch (err) {
-    if (err.message) alert(err.message);
-  }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); e.innerHTML = d.error || "실패"; return; }
+    closeDeposit(); await loadSettlements();
+  } catch (err) { e.innerHTML = "서버 연결 실패"; }
 }
 
 // --- MYPAGE / NICKNAME ---
